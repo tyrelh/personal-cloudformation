@@ -1,0 +1,78 @@
+Description: Dev environment accessible via SSH
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  InstanceType:
+    Description: Instance type and size
+    Type: String
+    Default: t3.nano
+  Ami:
+    Description: Reference to the AMI to use on the instance
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+  KeyPairName:
+    Description: Name of the KeyPair to apply to new instances by default. KeyPair must exist in same account you're deploying to
+    Type: String
+    Default: Ec2DevEnvKeyPair
+  ProjectTag:
+    Description: Tag to group resources related to a particular project
+    Type: String
+    Default: "none"
+
+Resources:
+  DevInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "Security group for ${AWS::StackName}"
+      GroupName: !Sub "${AWS::StackName}BastionHostSecurityGroup"
+      # VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - Description: SSH ingress from anywhere
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - Description: HTTP ingress from anywhere
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: "Project"
+          Value: !Ref ProjectTag
+  # DevInstanceProfile:
+  #   Type: AWS::IAM::InstanceProfile
+  #   Properties:
+  #     InstanceProfileName: !Sub "${AWS::StackName}-instance-profile"
+  #     Roles: 
+  #       - !Ref BastionInstanceRole
+  DevInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref Ami
+      InstanceType: !Ref InstanceType
+      # IamInstanceProfile:
+      KeyName: !Ref KeyPairName
+      # SubnetId
+      SecurityGroupIds:
+        - !Ref DevInstanceSecurityGroup
+      # LaunchTemplate:
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          # install httpd (Linux 2 version)
+          yum update -y
+          yum install -y httpd
+          systemctl start httpd
+          systemctl enable httpd
+          echo "<h1>Hello World from $(hostname -f)</h1>" > /var/www/html/index.html
+      Tags:
+        - Key: "Name" # applied as the resource name
+          Value: "DevInstance"
+        - Key: "Project"
+          Value: !Ref ProjectTag
+  
+Outputs:
+  DevInstancePublicIp:
+    Description: "Dev Instance Public Ip"
+    Value: !Sub "${DevInstance.PublicIp}"
