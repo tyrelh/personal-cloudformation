@@ -24,7 +24,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: !Sub "Security group for ${AWS::StackName}"
-      GroupName: !Sub "${AWS::StackName}BastionHostSecurityGroup"
+      GroupName: !Sub "${AWS::StackName}-security-group"
       # VpcId: !Ref VpcId
       SecurityGroupIngress:
         - Description: SSH ingress from anywhere
