@@ -1,2 +1,45 @@
 Description: Server to host Plausible analytics
 AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  ProjectTag:
+    Type: String
+    Default: Plausible
+
+Resources:
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH access via port 22
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: PlausibleServer
+      LaunchTemplateData:
+        InstanceType: t4g.nano
+        ImageId: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64
+        KeyName: PlausableServer
+        SecurityGroupsIds:
+          - !Ref SecurityGroup
+        UserData:
+          Fn::Base64: |
+            #!/bin/bash
+            dnf update -y
+
+
+  PlausibleServer:
+    Type: AWS::EC2::Instance
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: $Latest
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
