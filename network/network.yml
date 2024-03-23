@@ -1,0 +1,160 @@
+
+Description: Networking stack
+
+Parameters:
+  ProjectTag:
+    Type: String
+    Default: Network
+  VpcCidr:
+    Type: String
+    Default: 10.16.0.0/16
+  PublicSubnetCIDR:
+    Description: IP range for the Public Subnet
+    Type: String
+    Default: 10.16.13.0/24
+  PrivateSubnetCIDR:
+    Description: IP range for the Private Subnet
+    Type: String
+    Default: 10.16.10.0/24
+
+Resources:
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-VPC
+        - Key: Project
+          Value: !Ref ProjectTag
+  
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-igw
+        - Key: Project
+          Value: !Ref ProjectTag
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayPublicIp.AllocationId
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-nat-gateway
+        - Key: Project
+          Value: !Ref ProjectTag
+  NatGatewayPublicIp:
+    Type: AWS::EC2::EIP
+    Properties:
+      Tags:
+        - Key: "Name"
+          Value: !Sub "${AWS::StackName}-nat-gateway-eip"
+        - Key: "Project"
+          Value: !Ref ProjectTag
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Ref PublicSubnetCIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-public-subnet
+        - Key: Project
+          Value: !Ref ProjectTag
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Ref PrivateSubnetCIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-private-subnet
+        - Key: Project
+          Value: !Ref ProjectTag
+  
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-public-route-table
+        - Key: Project
+          Value: !Ref ProjectTag
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-private-route-table
+        - Key: Project
+          Value: !Ref ProjectTag
+  RouteToNatGateway:
+    Type: AWS::EC2::Route
+    DependsOn: NatGateway
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+      RouteTableId: !Ref PrivateRouteTable
+
+Outputs:
+  VPC:
+    Description: The ID of the VPC
+    Value: !Ref VPC
+    Export:
+      Name: !Sub ${AWS::StackName}-vpc-id
+  VPCCidrBlock:
+    Description: The VPCCidrBlock of the VPC
+    Value: !GetAtt VPC.CidrBlock
+    Export:
+      Name: !Sub ${AWS::StackName}-vpc-cidr
+  PublicSubnet:
+    Description: Public Subnet
+    Value: !Ref PublicSubnet
+    Export:
+      Name: !Sub ${AWS::StackName}-public-subnet
+  PrivateSubnet:
+    Description: Private Subnet
+    Value: !Ref PrivateSubnet
+    Export:
+      Name: !Sub ${AWS::StackName}-private-subnet
+  PublicRouteTable:
+    Description: Public Route Table
+    Value: !Ref PublicRouteTable
+    Export:
+      Name: !Sub ${AWS::StackName}-public-route-table
+  PrivateRouteTable:
+    Description: Typesense Private Route Table
+    Value: !Ref PrivateRouteTable
+    Export:
+      Name: !Sub ${AWS::StackName}-private-route-table
