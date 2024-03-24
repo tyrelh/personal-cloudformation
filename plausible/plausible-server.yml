@@ -5,21 +5,40 @@ Parameters:
   LatestLinuxAmiId:
     Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
     Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64
+  HealthCheckPort:
+    Type: Number
+    Default: 8108
+  HttpsCertArn:
+    Type: String
+    Default: "arn:aws:acm:ca-west-1:800086264871:certificate/7e851f56-2108-4ee3-a108-b9e0a728c3ae"
   ProjectTag:
     Type: String
     Default: Plausible
 
 Resources:
 
-  SecurityGroup:
+  InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
+      GroupName: !Sub "${AWS::StackName}-instance-security-group"
       GroupDescription: Enable SSH access via port 22
       VpcId: !ImportValue network-vpc-id
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: '22'
-          ToPort: '22'
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: !Ref HealthCheckPort
+          ToPort: !Ref HealthCheckPort
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 20
+          ToPort: 20
           CidrIp: 0.0.0.0/0
       Tags:
         - Key: "Name"
@@ -27,34 +46,180 @@ Resources:
         - Key: "Project"
           Value: !Ref ProjectTag
   
-  NetworkInterface:
-    Type: AWS::EC2::NetworkInterface
+  # NetworkInterface:
+  #   Type: AWS::EC2::NetworkInterface
+  #   Properties:
+  #     Description: "Network interface for the ${ProjectTag} instance"
+  #     GroupSet:
+  #       - !Ref InstanceSecurityGroup
+  #     SubnetId: !ImportValue network-public-subnet-1
+  #     Tags:
+  #       - Key: "Name"
+  #         Value: !Sub "${AWS::StackName}-network-interface"
+  #       - Key: "Project"
+  #         Value: !Ref ProjectTag
+
+  # PlausibleServer:
+  #   Type: AWS::EC2::Instance
+  #   Properties:
+  #     InstanceType: t4g.nano
+  #     ImageId: !Ref LatestLinuxAmiId
+  #     KeyName: PlausibleServer
+  #     NetworkInterfaces:
+  #       - NetworkInterfaceId: !Ref NetworkInterface
+  #         DeviceIndex: 0
+  #     UserData:
+  #       Fn::Base64: |
+  #         #!/bin/bash
+  #         dnf update -y
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub "${AWS::StackName}-server"
+  #       - Key: Project
+  #         Value: !Ref ProjectTag
+
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
     Properties:
-      Description: "Network interface for the ${ProjectTag} instance"
-      GroupSet:
-        - !Ref SecurityGroup
-      SubnetId: !ImportValue network-public-subnet
+      LaunchTemplateName: !Sub "${AWS::StackName}-launch-template"
+      LaunchTemplateData:
+        ImageId: !Ref LatestLinuxAmiId
+        InstanceType: t4g.nano
+        KeyName: PlausibleServer
+        # NetworkInterfaces:
+        #   - NetworkInterfaceId: !Ref NetworkInterface
+        #     DeviceIndex: 0
+        SecurityGroupIds:
+          - !GetAtt InstanceSecurityGroup.GroupId
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            dnf update -y
+            dnf install -y httpd
+            dnf install -y docker
+            echo "Listen ${HealthCheckPort}" >> /etc/httpd/conf/httpd.conf
+            systemctl start httpd
+            systemctl enable httpd
+            # echo "Hello, World!" > /var/www/html/index.html
+            echo '{"status":"healthy"}' > /var/www/html/health/index.html
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub "${AWS::StackName}-instance"
+              - Key: Project
+                Value: !Ref ProjectTag
+      TagSpecifications:
+          - ResourceType: launch-template
+            Tags:
+              - Key: Project
+                Value: !Ref ProjectTag
+  
+
+  ASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
+      MinSize: 1
+      MaxSize: 1
+      DesiredCapacity: 1
+      TargetGroupARNs:
+        - !Ref ALBTargetGroup
+      VPCZoneIdentifier:
+        - !ImportValue network-private-subnet-1
+        - !ImportValue network-private-subnet-2
       Tags:
-        - Key: "Name"
-          Value: !Sub "${AWS::StackName}-network-interface"
+        - Key: Name
+          Value: !Sub "${AWS::StackName}"
+          PropagateAtLaunch: true
+        - Key: Project
+          Value: !Ref ProjectTag
+          PropagateAtLaunch: true
+
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub "${AWS::StackName}-alb-security-group"
+      GroupDescription: Allow traffic on port 443
+      VpcId: !ImportValue network-vpc-id
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        # - IpProtocol: tcp
+        #   FromPort: 80
+        #   ToPort: 80
+        #   CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: !Ref HealthCheckPort
+          ToPort: !Ref HealthCheckPort
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 20
+          ToPort: 20
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
+  ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${AWS::StackName}-alb"
+      SecurityGroups:
+        - !GetAtt ALBSecurityGroup.GroupId
+      Subnets:
+        - !ImportValue network-public-subnet-1
+        - !ImportValue network-public-subnet-2
+      Tags:
         - Key: "Project"
           Value: !Ref ProjectTag
-
-  PlausibleServer:
-    Type: AWS::EC2::Instance
+  # ALBListener:
+  #   Type: AWS::ElasticLoadBalancingV2::Listener
+  #   Properties:
+  #     DefaultActions:
+  #       - Type: forward
+  #         TargetGroupArn: !Ref ALBTargetGroup
+  #     LoadBalancerArn: !Ref ALB
+  #     Port: 80
+  #     Protocol: HTTP
+  ALBListenerHealthCheck:
+    Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
-      InstanceType: t4g.nano
-      ImageId: !Ref LatestLinuxAmiId
-      KeyName: PlausibleServer
-      NetworkInterfaces:
-        - NetworkInterfaceId: !Ref NetworkInterface
-          DeviceIndex: 0
-      UserData:
-        Fn::Base64: |
-          #!/bin/bash
-          dnf update -y
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ALBTargetGroup
+      LoadBalancerArn: !Ref ALB
+      Port: !Ref HealthCheckPort
+      Protocol: HTTP
+  ALBListenerHTTPS:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ALBTargetGroup
+      LoadBalancerArn: !Ref ALB
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref HttpsCertArn
+  ALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 15
+      HealthyThresholdCount: 5
+      HealthCheckPath: /health
+      Matcher:
+        HttpCode: 200
+      Name: !Sub ${AWS::StackName}-alb-target-group
+      Port: !Ref HealthCheckPort
+      Protocol: HTTP
+      UnhealthyThresholdCount: 3
+      VpcId: !ImportValue network-vpc-id
       Tags:
-        - Key: "Name"
-          Value: !Sub "${AWS::StackName}-server"
         - Key: Project
           Value: !Ref ProjectTag
