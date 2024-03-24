@@ -119,6 +119,7 @@ Resources:
           Fn::Base64: !Sub |
             #!/bin/bash
             dnf update -y
+            dnf install -y git
             dnf install -y httpd
             dnf install -y docker
 
