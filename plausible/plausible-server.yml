@@ -120,8 +120,13 @@ Resources:
             #!/bin/bash
             dnf update -y
             dnf install -y git
-            dnf install -y httpd
+
+            # Docker
             dnf install -y docker
+            curl -SL https://github.com/docker/compose/releases/download/v2.26.0/docker-compose-linux-armv6  -o /usr/local/bin/docker-compose
+            chown root:root /usr/local/bin/docker-compose
+            chmod +x /usr/local/bin/docker-compose
+            systemctl enable --now docker
 
             # Configure httpd
             # dnf install -y httpd
