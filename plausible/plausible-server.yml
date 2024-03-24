@@ -45,6 +45,28 @@ Resources:
           Value: !Sub "${AWS::StackName}-security-group"
         - Key: "Project"
           Value: !Ref ProjectTag
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-instance-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectTag
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub ${AWS::StackName}-instance-profile
+      Roles:
+        - !Ref InstanceRole
   
   # NetworkInterface:
   #   Type: AWS::EC2::NetworkInterface
@@ -83,6 +105,8 @@ Resources:
     Properties:
       LaunchTemplateName: !Sub "${AWS::StackName}-launch-template"
       LaunchTemplateData:
+        IamInstanceProfile:
+          Arn: !GetAtt InstanceProfile.Arn
         ImageId: !Ref LatestLinuxAmiId
         InstanceType: t4g.nano
         KeyName: PlausibleServer
@@ -211,15 +235,6 @@ Resources:
       Protocol: HTTPS
       Certificates:
         - CertificateArn: !Ref HttpsCertArn
-  ALBListenerSSH:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref ALBTargetGroup
-      LoadBalancerArn: !Ref ALB
-      Port: 22
-      Protocol: TCP
   ALBTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
