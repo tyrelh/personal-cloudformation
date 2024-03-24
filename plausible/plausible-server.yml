@@ -29,8 +29,8 @@ Resources:
           ToPort: 443
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
+          FromPort: 8000
+          ToPort: 8000
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: !Ref HealthCheckPort
@@ -181,10 +181,10 @@ Resources:
           FromPort: 443
           ToPort: 443
           CidrIp: 0.0.0.0/0
-        # - IpProtocol: tcp
-        #   FromPort: 80
-        #   ToPort: 80
-        #   CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: !Ref HealthCheckPort
           ToPort: !Ref HealthCheckPort
@@ -208,15 +208,17 @@ Resources:
       Tags:
         - Key: "Project"
           Value: !Ref ProjectTag
-  # ALBListener:
-  #   Type: AWS::ElasticLoadBalancingV2::Listener
-  #   Properties:
-  #     DefaultActions:
-  #       - Type: forward
-  #         TargetGroupArn: !Ref ALBTargetGroup
-  #     LoadBalancerArn: !Ref ALB
-  #     Port: 80
-  #     Protocol: HTTP
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ALBTargetGroup
+      LoadBalancerArn: !Ref ALB
+      Port: 8000
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref HttpsCertArn
   ALBListenerHealthCheck:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
@@ -226,17 +228,17 @@ Resources:
       LoadBalancerArn: !Ref ALB
       Port: !Ref HealthCheckPort
       Protocol: HTTP
-  ALBListenerHTTPS:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref ALBTargetGroup
-      LoadBalancerArn: !Ref ALB
-      Port: 443
-      Protocol: HTTPS
-      Certificates:
-        - CertificateArn: !Ref HttpsCertArn
+  # ALBListenerHTTPS:
+  #   Type: AWS::ElasticLoadBalancingV2::Listener
+  #   Properties:
+  #     DefaultActions:
+  #       - Type: forward
+  #         TargetGroupArn: !Ref ALBTargetGroup
+  #     LoadBalancerArn: !Ref ALB
+  #     Port: 443
+  #     Protocol: HTTPS
+  #     Certificates:
+  #       - CertificateArn: !Ref HttpsCertArn
   ALBTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
