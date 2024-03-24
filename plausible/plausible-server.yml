@@ -97,11 +97,17 @@ Resources:
             dnf update -y
             dnf install -y httpd
             dnf install -y docker
+
+            # Configure httpd
             echo "Listen ${HealthCheckPort}" >> /etc/httpd/conf/httpd.conf
             systemctl start httpd
             systemctl enable httpd
             # echo "Hello, World!" > /var/www/html/index.html
             echo '{"status":"healthy"}' > /var/www/html/health/index.html
+
+            # Plausible
+            mkdir plausible
+            git clone https://github.com/plausible/community-edition plausible
         TagSpecifications:
           - ResourceType: instance
             Tags:
