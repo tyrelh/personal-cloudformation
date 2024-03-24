@@ -124,14 +124,14 @@ Resources:
 
             # Configure httpd
             echo "Listen ${HealthCheckPort}" >> /etc/httpd/conf/httpd.conf
+            echo '{"status":"healthy"}' > /var/www/html/health/index.html
             systemctl start httpd
             systemctl enable httpd
             # echo "Hello, World!" > /var/www/html/index.html
-            echo '{"status":"healthy"}' > /var/www/html/health/index.html
 
             # Plausible
-            mkdir plausible
-            git clone https://github.com/plausible/community-edition plausible
+            mkdir /opt/plausible
+            git clone https://github.com/plausible/community-edition /opt/plausible
         TagSpecifications:
           - ResourceType: instance
             Tags:
