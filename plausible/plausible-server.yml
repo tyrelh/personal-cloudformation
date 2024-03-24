@@ -253,3 +253,26 @@ Resources:
       Tags:
         - Key: Project
           Value: !Ref ProjectTag
+
+  Domain:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: superflux.dev.
+      Comment: "Plausible analytics"
+      Name:  !Sub "plausible.superflux.dev"
+      Type: CNAME
+      TTL: 400
+      ResourceRecords:
+        - !GetAtt ALB.DNSName
+
+Outputs:
+  ALBDNSName:
+    Description: The DNS name of the ALB
+    Value: !GetAtt ALB.DNSName
+    Export:
+      Name: !Sub "${AWS::StackName}-alb-dns-name"
+  Subdomain:
+    Description: The domain pointing to the ALB
+    Value: !Ref Domain
+    Export:
+      Name: !Sub "${AWS::StackName}-domain"
