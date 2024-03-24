@@ -211,6 +211,15 @@ Resources:
       Protocol: HTTPS
       Certificates:
         - CertificateArn: !Ref HttpsCertArn
+  ALBListenerSSH:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ALBTargetGroup
+      LoadBalancerArn: !Ref ALB
+      Port: 22
+      Protocol: TCP
   ALBTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
