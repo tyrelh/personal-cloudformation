@@ -137,8 +137,15 @@ Resources:
             # # echo "Hello, World!" > /var/www/html/index.html
 
             # Plausible
+            # https://github.com/plausible/community-edition/
             mkdir /opt/plausible
             git clone https://github.com/plausible/community-edition /opt/plausible
+            # set BASE_URL
+            sed -i 's#BASE_URL=replace-me#BASE_URL=https://plausible.superflux.dev#g' /opt/plausible/plausible-conf.env
+            # SET SECRET_KEY_BASE
+            SECRET_KEY=$(openssl rand -base64 48)
+            sed -i "s#SECRET_KEY_BASE=replace-me#SECRET_KEY_BASE=$SECRET_KEY#g" /opt/plausible/plausible-conf.env
+            docker-compose -f /opt/plausible/docker-compose.yml up -d
         TagSpecifications:
           - ResourceType: instance
             Tags:
