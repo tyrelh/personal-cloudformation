@@ -124,12 +124,12 @@ Resources:
             dnf install -y docker
 
             # Configure httpd
-            echo "Listen ${HealthCheckPort}" >> /etc/httpd/conf/httpd.conf
-            mkdir /var/www/html/health
-            echo '{"status":"healthy"}' > /var/www/html/health/index.html
-            systemctl start httpd
-            systemctl enable httpd
-            # echo "Hello, World!" > /var/www/html/index.html
+            # dnf install -y httpd
+            # echo "Listen ${HealthCheckPort}" >> /etc/httpd/conf/httpd.conf
+            # mkdir /var/www/html/health
+            # echo '{"status":"healthy"}' > /var/www/html/health/index.html
+            # systemctl enable --now httpd
+            # # echo "Hello, World!" > /var/www/html/index.html
 
             # Plausible
             mkdir /opt/plausible
