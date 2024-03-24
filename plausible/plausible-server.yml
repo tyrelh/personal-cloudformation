@@ -125,6 +125,7 @@ Resources:
 
             # Configure httpd
             echo "Listen ${HealthCheckPort}" >> /etc/httpd/conf/httpd.conf
+            mkdir /var/www/html/health
             echo '{"status":"healthy"}' > /var/www/html/health/index.html
             systemctl start httpd
             systemctl enable httpd
