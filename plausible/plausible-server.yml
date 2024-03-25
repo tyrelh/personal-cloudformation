@@ -24,10 +24,10 @@ Resources:
       GroupDescription: Enable SSH access via port 22
       VpcId: !ImportValue network-vpc-id
       SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
+        # - IpProtocol: tcp
+        #   FromPort: 443
+        #   ToPort: 443
+        #   CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 8000
           ToPort: 8000
@@ -36,10 +36,10 @@ Resources:
           FromPort: !Ref HealthCheckPort
           ToPort: !Ref HealthCheckPort
           CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 20
-          ToPort: 20
-          CidrIp: 0.0.0.0/0
+        # - IpProtocol: tcp
+        #   FromPort: 20
+        #   ToPort: 20
+        #   CidrIp: 0.0.0.0/0
       Tags:
         - Key: "Name"
           Value: !Sub "${AWS::StackName}-security-group"
@@ -189,10 +189,10 @@ Resources:
       GroupDescription: Allow traffic on port 443
       VpcId: !ImportValue network-vpc-id
       SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
+        # - IpProtocol: tcp
+        #   FromPort: 443
+        #   ToPort: 443
+        #   CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 8000
           ToPort: 8000
@@ -201,10 +201,10 @@ Resources:
           FromPort: !Ref HealthCheckPort
           ToPort: !Ref HealthCheckPort
           CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 20
-          ToPort: 20
-          CidrIp: 0.0.0.0/0
+        # - IpProtocol: tcp
+        #   FromPort: 20
+        #   ToPort: 20
+        #   CidrIp: 0.0.0.0/0
       Tags:
         - Key: Project
           Value: !Ref ProjectTag
